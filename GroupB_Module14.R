@@ -22,7 +22,7 @@ m = lm(pheno$Feb_snow ~ pheno$Feb_temp)
 plot(m)
 out = summary(m)
 head(out)
-out$r.squared
+out$r.squared ## confirmed no signification relationship R2 = 0.004
 
 ## plot predictors and response just for fun
 plot(pheno$leaf_DOY, pheno$Feb_temp) #earlier leaf out with warmer mean temps, no surprise
@@ -37,19 +37,23 @@ install.packages("rjags")
 library(rjags)
 
 ## write the JAGS model
+## need to include both predictors and their priors
 
 model_string <- "model{
 
 # Likelihood
 for (i in 1:Ntotal){
-  y[i] ~ dnorm(mu[i], inv.var)
-  mu[i] <- beta[1] + beta[2] * x1[i]
+
+y[i] ~ dnorm(mu[i], inv.var)
+mu[i] <- beta[1] + beta[2] * x1[i] + beta[3] * x2[i]
 
 }
 
 # Priors for beta, one for each beta parameter
-  for(j in 1:2){
-  beta[j] ~ dnorm(0, 0.0001)
+
+for(j in 1:3){
+beta[j] ~ dnorm(0, 0.0001)
+
 }
 
 # Prior for inverse variance
@@ -57,89 +61,62 @@ for (i in 1:Ntotal){
 
 }"
 
-## set up data
+## data setup
+dataList = list(y = pheno$leaf_DOY, x1 = pheno$Feb_temp, x2 = pheno$Feb_snow,
+                Ntotal = length(pheno$leaf_DOY))
 
-setup <- list(y = pheno$leaf_DOY, x1 = pheno$Feb_temp, Ntotal = length(pheno$leaf_DOY))
+## compile and run model
 
-## Compile model
+model <- jags.model(textConnection(model_string), 
+                    data = dataList, n.chains = 3)
 
-model.obj <- jags.model(textConnection(model_string), data = setup, n.chains = 3)
+## burn in
+update(model, 10000)
 
-## run model: burn-in
-
-update(model.obj, 10000)
-
-## sample posterior
-
-samp <- coda.samples(model.obj, variable.names = c("beta"), n.iter = 20000)
-
-###############################################
-## check convergence and autocorrelation
-###############################################
-
-## Trace and density plots
-
-plot(samp) # good mixing and horizontal
-
-## autocorrelation plots
-
-autocorr.plot(samp) # there is a small amount of autocorrelation
-
-## gelman / BGR plot
-
-gelman.plot(samp) # dropping to zero quickly but mixing a little funky and not all the way to zero
+## sample the posterior
+samp <- coda.samples(model, variable.names = c("beta"),
+                     n.iter = 20000)
 
 ###############################################
-## tune the model
+## Check convergence and autocorrelation of chains post burn-in
 ###############################################
 
-## Compile model
+## graphical summary
+plot(samp)
+## trace plots show good mixing, no trending up or down
+## density plots show smooth, normal distribution
+## model looks good on this end
 
-model.obj1 <- jags.model(textConnection(model_string), data = setup, n.chains = 3)
+## autocorrelation
+autocorr.plot(samp)
+## long lag times (>30) for betas 1 and 3 in each chain
+## beta 2 looks good across all chains
+## need to thin by 30
 
-## run model: burn-in
+## BGR plot
+gelman.plot(samp, xlim = c(0,50000), ylim=c(1,1.05))
+# confirms beta 1 and 3 don't stabilize until past 20,000 
 
-update(model.obj1, 50000)
+## The graphical summary shows that the chains are well mixed
+## and the model has converged, parameters not dependent on timing. 
+## The autocorrelation plots show that thinning needs to occur 
+## because the lag time was so long. 
 
-## sample posterior
+##########################################################
+## Model Tuning
+#########################################################
 
-samp1 <- coda.samples(model.obj1, variable.names = c("beta"), n.iter = 100000)
+## recompile model with thinning, more iterations, and longer burn-in time
 
-## Trace and density plots
+model1 <- jags.model(textConnection(model_string), 
+                    data = dataList, n.chains = 3)
 
-plot(samp1) # good mixing and horizontal
+update(model1, 30000) ## we'll try tripling the burn-in
 
-## autocorrelation plots
+samp1 <- coda.samples(model1, variable.names = c("beta"),
+                     n.iter = 100000, thin = 100) 
+#tried thinning by 30 first, wasn't enough, so did 100
 
-autocorr.plot(samp1) # there is a small amount of autocorrelation
-
-## gelman / BGR plot
-
-gelman.plot(samp1) ## gelman plot is worse
-
-### To KM: I can't figure this part out - increasing burn-in and iterations 
-### doesn't fix the autocorrelation, and gelman for beta 2 gets worse
-
-
-##################################################################
-## interpretation
-##################################################################
-
-summary(samp)
-
-20000*3 ## total posterior sample size
-
-## Med val of post beta1 - 86.84 with a 95% credible interval of 85.84 - 88.09
-## Med val of post beta2 - -0.71 with a 95% credible interval of -0.88 - -0.54
-
-## For a unit increase in Feb temperature, you could expect an 86.84 increase in leaf doy of year 
-## Does this even make sense? Why is it so large?
-## Do we need to thin the model?
-## Are we supposed to make a Bayesian model for snow too?
-## It looks like a positive relationship DOES exist in snow vs. leaf out
-## But the question says run one model with whatever preddictors you would need.
-## How would you add in another predictor to the same model?
-
-## Honestly, this week does not make sense to me
-
-
+autocorr.plot(samp1) #that looks better! 
+plot(samp1) #still shows good mixing
+gelman.plot(samp1)
