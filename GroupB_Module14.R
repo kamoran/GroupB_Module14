@@ -22,7 +22,7 @@ m = lm(pheno$Feb_snow ~ pheno$Feb_temp)
 plot(m)
 out = summary(m)
 head(out)
-out$r.squared ## confirmed no signification relationship R2 0.004
+out$r.squared ## confirmed no signification relationship R2 = 0.004
 
 
 ## plot predictors and response just for fun
@@ -59,5 +59,62 @@ inv.var ~ dgamma(0.01, 0.01)
 
 }"
 
+## data setup
+dataList = list(y = pheno$leaf_DOY, x1 = pheno$Feb_temp, x2 = pheno$Feb_snow,
+                Ntotal = length(pheno$leaf_DOY))
 
+## compile and run model
 
+model <- jags.model(textConnection(model_string), 
+                    data = dataList, n.chains = 3)
+
+## burn in
+update(model, 10000)
+
+## sample the posterior
+samp <- coda.samples(model, variable.names = c("beta"),
+                     n.iter = 20000)
+
+###############################################
+## Check convergence and autocorrelation of chains post burn-in
+###############################################
+
+## graphical summary
+plot(samp)
+## trace plots show good mixing, no trending up or down
+## density plots show smooth, normal distribution
+## model looks good on this end
+
+## autocorrelation
+autocorr.plot(samp)
+## long lag times (>30) for betas 1 and 3 in each chain
+## beta 2 looks good across all chains
+## need to thin by 30
+
+## BGR plot
+gelman.plot(samp, xlim = c(0,50000), ylim=c(1,1.05))
+# confirms beta 1 and 3 don't stabilize until past 20,000 
+
+## The graphical summary shows that the chains are well mixed
+## and the model has converged, parameters not dependent on timing. 
+## The autocorrelation plots show that thinning needs to occur 
+## because the lag time was so long. 
+
+##########################################################
+## Model Tuning
+#########################################################
+
+## recompile model with thinning, more iterations, and longer burn-in time
+
+model1 <- jags.model(textConnection(model_string), 
+                    data = dataList, n.chains = 3)
+
+update(model1, 30000) ## we'll try tripling the burn-in
+
+samp1 <- coda.samples(model1, variable.names = c("beta"),
+                     n.iter = 100000, thin = 100) 
+#tried thinning by 30 first, wasn't enough, so did 100
+
+autocorr.plot(samp1) #that looks better! 
+plot(samp1) #still shows good mixing
+gelman.plot(samp1)
