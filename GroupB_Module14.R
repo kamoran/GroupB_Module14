@@ -22,7 +22,7 @@ m = lm(pheno$Feb_snow ~ pheno$Feb_temp)
 plot(m)
 out = summary(m)
 head(out)
-out$r.squared
+out$r.squared ## confirmed no signification relationship R2 0.004
 
 
 ## plot predictors and response just for fun
@@ -38,18 +38,19 @@ install.packages("rjags")
 library(rjags)
 
 ## write the JAGS model
+## need to include both predictors and their priors
 
 model_string <- "model{
 
 # Likelihood
 for (i in 1:Ntotal){
 y[i] ~ dnorm(mu[i], inv.var)
-mu[i] <- beta[1] + beta[2] * x1[i]
+mu[i] <- beta[1] + beta[2] * x1[i] + beta[3] * x2[i]
 
 }
 
 # Priors for beta, one for each beta parameter
-for(j in 1:2){
+for(j in 1:3){
 beta[j] ~ dnorm(0, 0.0001)
 }
 
