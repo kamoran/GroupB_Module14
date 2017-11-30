@@ -9,7 +9,7 @@ getwd()
 ## Read in data and check for collinearity, etc
 ###############################################
 
-pheno = read.table("../Bayes_pheno.csv", sep=",", header = T)
+pheno = read.table("Bayes_pheno.csv", sep=",", header = T)
 head(pheno)
 summary(pheno)
 is.na(pheno)
@@ -125,3 +125,18 @@ gelman.plot(samp1) #beta[2] still doesn't look great but better
 # burn in, iterations, thinning
 
 
+
+summary(samp1)
+1000*3 ## total posterior sample size
+
+## Median value of the posterior beta1 - 85.54 with a 95% credible interval of 79.64 - 91.55
+## Median value of the posterior beta2 - -0.72 with a 95% credible interval of -0.89 - -0.53
+## Median value of the posterior beta3 - 0.05 with a 95% credible interval of -0.18 - 0.27
+
+## For a unit increase in Feb temp, you'd expect an 85.54 increase in leaf out date ??? This makes no sense
+## For a unit increase in Feb snow, you'd expect a 0.72 decrease in leaf out date ???
+
+## To KM:
+## I don't understand the betas here, so my interpretations will likely be wrong.
+## I have reviewed your code but do not feel comfortable being responsible for interpretations.
+## For next week, can we try to communicate about assignments beforehand?
