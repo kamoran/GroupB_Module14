@@ -109,7 +109,8 @@ gelman.plot(samp, xlim = c(0,50000), ylim=c(1,1.05))
 model1 <- jags.model(textConnection(model_string), 
                     data = dataList, n.chains = 3)
 
-update(model1, 30000) ## we'll try tripling the burn-in
+update(model1, 50000) 
+## beta[2] BGR fell apart when 30000 used, 50000 corrected
 
 samp1 <- coda.samples(model1, variable.names = c("beta"),
                      n.iter = 100000, thin = 100) 
@@ -117,4 +118,8 @@ samp1 <- coda.samples(model1, variable.names = c("beta"),
 
 autocorr.plot(samp1) #that looks better! 
 plot(samp1) #still shows good mixing
-gelman.plot(samp1)
+gelman.plot(samp1) #beta[2] still doesn't look great but better
+# tried a bunch of combinations but this seemed to be best overall fit of 
+# burn in, iterations, thinning
+
+
