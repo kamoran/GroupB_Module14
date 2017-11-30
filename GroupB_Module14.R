@@ -9,7 +9,7 @@ getwd()
 ## Read in data and check for collinearity, etc
 ###############################################
 
-pheno = read.table("Bayes_pheno.csv", sep=",", header = T)
+pheno = read.table("../Bayes_pheno.csv", sep=",", header = T)
 head(pheno)
 summary(pheno)
 is.na(pheno)
@@ -24,10 +24,9 @@ out = summary(m)
 head(out)
 out$r.squared ## confirmed no signification relationship R2 = 0.004
 
-
 ## plot predictors and response just for fun
-plot(pheno$Feb_temp, pheno$leaf_DOY) #earlier leaf out with warmer mean temps, no surprise
-plot(pheno$Feb_snow, pheno$leaf_DOY) #not an obvious relationship between snow and leaf out
+plot(pheno$leaf_DOY, pheno$Feb_temp) #earlier leaf out with warmer mean temps, no surprise
+plot(pheno$leaf_DOY, pheno$Feb_snow) #not an obvious relationship between snow and leaf out
 
 ###############################################
 ## set up and run 3 chain linear regression model for JAGS
@@ -44,18 +43,21 @@ model_string <- "model{
 
 # Likelihood
 for (i in 1:Ntotal){
+
 y[i] ~ dnorm(mu[i], inv.var)
 mu[i] <- beta[1] + beta[2] * x1[i] + beta[3] * x2[i]
 
 }
 
 # Priors for beta, one for each beta parameter
+
 for(j in 1:3){
 beta[j] ~ dnorm(0, 0.0001)
+
 }
 
 # Prior for inverse variance
-inv.var ~ dgamma(0.01, 0.01)
+  inv.var ~ dgamma(0.01, 0.01)
 
 }"
 
